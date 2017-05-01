@@ -15,53 +15,43 @@ class MLP:
         self.h = numpy.array                   # H[] = (array where the values of the hidden neurons are stored)
         self.o = numpy.array                   # O[] = (array where the outputs are stored)
 
-    # sigmoid for range 0..1
-    def activation_sigmoid(self, sig_input, der=False):
-        if der:
-            return numpy.exp(-sig_input) / (1 + numpy.exp(-sig_input)) ** 2
-        else:
-            return 1 / (1 + numpy.exp(-sig_input))
-
-    # tanh for range -1..1
-    def activation_tanh(self, tanh_input, der=False):
-        if der:
-            return 1 - (numpy.power(self.activation_tanh(tanh_input), 2))
-        else:
-            return (2 / (1 + numpy.exp(tanh_input * -2))) - 1
-
-    # initialises weights to small random values, and fills deltas with
-    # 0s to the same size matrix as the corresponding weight matrix
+    # sets weights to random values and fills deltas with zeros
+    # to the same size as weight matrix
     def randomise(self):
         self.w1 = numpy.array((numpy.random.uniform(0.0, 1, (self.no_of_inputs, self.no_of_hidden_units))).tolist())
         self.dw1 = numpy.dot(self.w1, 0)
         self.w2 = numpy.array((numpy.random.uniform(0.0, 1, (self.no_of_hidden_units, self.no_of_outputs))).tolist())
         self.dw2 = numpy.dot(self.w2, 0)
 
-    # forward pass, computes activations in z1 and z2, then fills h and o with the activated
-    # values either sigmoid or tanh depending on whether it is the xor or sine problem
-    def forward(self, input_vectors, sin=False):
+    # computes activations of z1,z2. fills h and o with the activated values
+    # if SIN ->hyperbolic_tangent
+    # if XOR ->logistic_sigmoid
+    def forward(self, input_vectors, sin):
         self.z1 = numpy.dot(input_vectors, self.w1)
         if sin:
-            self.h = self.activation_tanh(self.z1)
+            self.h = self.hyperbolic_tangent(self.z1)
         else:
-            self.h = self.activation_sigmoid(self.z1)
+            self.h = self.logistic_sigmoid(self.z1)
 
         self.z2 = numpy.dot(self.h, self.w2)
         if sin:
-            self.o = self.activation_tanh(self.z2)
+            self.o = self.hyperbolic_tangent(self.z2)
         else:
-            self.o = self.activation_sigmoid(self.z2)
+            self.o = self.logistic_sigmoid(self.z2)
 
-    def backwards(self, input_vectors, target, sin=False):
-
+    # computes error. computes activation derivatives based on XOR or SIN.
+    # if SIN ->hyperbolic_tangent
+    # if XOR ->logistic_sigmoid
+    # then multiplies the derivatives by the error
+    # dot product of those values with h & o values produce the deltas
+    def backwards(self, input_vectors, target, sin):
         output_error = numpy.subtract(target, self.o)
-
         if sin:
-            activation_lower_layer = self.activation_tanh(self.z1, True)
-            activation_upper_layer = self.activation_tanh(self.z2, True)
+            activation_lower_layer = self.hyperbolic_tangent(self.z1, True)
+            activation_upper_layer = self.hyperbolic_tangent(self.z2, True)
         else:
-            activation_lower_layer = self.activation_sigmoid(self.z1, True)
-            activation_upper_layer = self.activation_sigmoid(self.z2, True)
+            activation_lower_layer = self.logistic_sigmoid(self.z1, True)
+            activation_upper_layer = self.logistic_sigmoid(self.z2, True)
 
         dw2_a = numpy.multiply(output_error, activation_upper_layer)
         self.dw2 = numpy.dot(self.h.T, dw2_a)
@@ -71,23 +61,39 @@ class MLP:
 
         return numpy.mean(numpy.abs(output_error))
 
-    # updates weights with the regard to learning rate after the deltas computed in backwards()
+    # updates weights of learning rate with new deltas computed in backwards()
     def update_weights(self, learning_rate):
         self.w1 = numpy.add(self.w1, learning_rate * self.dw1)
         self.w2 = numpy.add(self.w2, learning_rate * self.dw2)
         self.dw1 = numpy.array
         self.dw2 = numpy.array
 
-    def info_to_string(self):
-        print('(NI) Number of Inputs: \n' + str(self.no_of_inputs))
-        print('(NH) Number of Hidden Units: \n' + str(self.no_of_hidden_units))
-        print('(NO) Number of Outputs: \n' + str(self.no_of_outputs))
-        print('w1: \n' + str(self.w1))
-        print('w2: \n' + str(self.w2))
-        print('dw1: \n' + str(self.dw1))
-        print('dw2: \n' + str(self.dw2))
-        print('z1: \n' + str(self.z1))
-        print('z2: \n' + str(self.z2))
-        print('h: \n' + str(self.h))
-        print('o: \n' + str(self.o))
-        print('\n')
+    # Sigmoid of [0..1]
+    def logistic_sigmoid(self, sig_input, backward=False):
+        if backward:
+            return numpy.exp(-sig_input) / (1 + numpy.exp(-sig_input)) ** 2
+        else:
+            return 1 / (1 + numpy.exp(-sig_input))
+
+    # Tanh of [-1..1]
+    def hyperbolic_tangent(self, tanh_input, backward=False):
+        if backward:
+            return 1 - (numpy.power(self.hyperbolic_tangent(tanh_input), 2))
+        else:
+            return (2 / (1 + numpy.exp(tanh_input * -2))) - 1
+
+    # to string
+    def __str__(self):
+        str_temp = ("\n(NI) Number of Inputs: \t" + str(self.no_of_inputs))
+        str_temp += ("\n(NH) Number of Hidden Units: \t" + str(self.no_of_hidden_units))
+        str_temp += ("\n(NO) Number of Outputs: \t" + str(self.no_of_outputs))
+        str_temp += ("\nw1: \t" + str(self.w1))
+        str_temp += ("\nw2: \t" + str(self.w2))
+        str_temp += ("\ndw1: \t" + str(self.dw1))
+        str_temp += ("\ndw2: \t" + str(self.dw2))
+        str_temp += ("\nz1: \t" + str(self.z1))
+        str_temp += ("\nz2: \t" + str(self.z2))
+        str_temp += ("\nh: \t" + str(self.h))
+        str_temp += ("\no: \t" + str(self.o))
+        str_temp += '\n'
+        return str_temp
